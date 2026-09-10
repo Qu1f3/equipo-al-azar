@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bombos Voley — equipos parejos para el entreno</title>
+<meta name="description" content="Arma equipos al azar y balanceados por nivel para tus entrenos de voleibol, sin conexión y sin cuentas.">
+
+<meta name="theme-color" content="#0D2036">
+<link rel="manifest" href="manifest.json">
+
+<!-- iOS home screen support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bombos">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-header__text">
+    <h1>Bombos Voley</h1>
+    <p>Arma equipos parejos para el entreno, directo desde el celular.</p>
+  </div>
+  <button id="btn-clear-all" class="btn-text" type="button">Limpiar todo</button>
+</header>
+
+<main>
+
+  <section class="tiers" aria-label="Bombos por nivel">
+    <div class="tier-panel" data-tier="tier1">
+      <div class="tier-panel__head">
+        <h2>Tier 1: nivel alto</h2>
+        <span class="tier-count" id="count-tier1">0</span>
+      </div>
+      <form class="add-player-form" data-tier="tier1">
+        <label class="sr-only" for="input-tier1">Nombre del jugador para Tier 1</label>
+        <input id="input-tier1" type="text" placeholder="Nombre del jugador" autocomplete="off" maxlength="40">
+        <button type="submit">Agregar</button>
+      </form>
+      <ul class="player-list" id="list-tier1"></ul>
+      <p class="empty-hint" id="empty-tier1">Todavía no hay jugadores en este bombo.</p>
+    </div>
+
+    <div class="tier-panel" data-tier="tier2">
+      <div class="tier-panel__head">
+        <h2>Tier 2: nivel medio</h2>
+        <span class="tier-count" id="count-tier2">0</span>
+      </div>
+      <form class="add-player-form" data-tier="tier2">
+        <label class="sr-only" for="input-tier2">Nombre del jugador para Tier 2</label>
+        <input id="input-tier2" type="text" placeholder="Nombre del jugador" autocomplete="off" maxlength="40">
+        <button type="submit">Agregar</button>
+      </form>
+      <ul class="player-list" id="list-tier2"></ul>
+      <p class="empty-hint" id="empty-tier2">Todavía no hay jugadores en este bombo.</p>
+    </div>
+
+    <div class="tier-panel" data-tier="tier3">
+      <div class="tier-panel__head">
+        <h2>Tier 3: nivel bajo</h2>
+        <span class="tier-count" id="count-tier3">0</span>
+      </div>
+      <form class="add-player-form" data-tier="tier3">
+        <label class="sr-only" for="input-tier3">Nombre del jugador para Tier 3</label>
+        <input id="input-tier3" type="text" placeholder="Nombre del jugador" autocomplete="off" maxlength="40">
+        <button type="submit">Agregar</button>
+      </form>
+      <ul class="player-list" id="list-tier3"></ul>
+      <p class="empty-hint" id="empty-tier3">Todavía no hay jugadores en este bombo.</p>
+    </div>
+  </section>
+
+  <section class="config-panel" aria-label="Configurar sorteo">
+    <h2>Configurar sorteo</h2>
+    <div class="config-row">
+      <label for="input-num-teams">¿Cuántos equipos quieres armar?</label>
+      <input id="input-num-teams" type="number" min="2" max="20" step="1" value="2" inputmode="numeric">
+    </div>
+    <p class="total-players">Total de jugadores en los bombos: <strong id="total-players">0</strong></p>
+    <div id="warnings" class="warnings" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="results" id="results-section" aria-label="Equipos generados" hidden>
+    <div class="results__head">
+      <h2>Equipos generados</h2>
+      <button id="btn-copy" class="btn-text" type="button">Copiar equipos</button>
+    </div>
+    <div class="teams-grid" id="teams-grid"></div>
+  </section>
+
+</main>
+
+<div class="action-bar">
+  <button id="btn-reshuffle" class="btn-secondary" type="button" hidden>Volver a sortear</button>
+  <button id="btn-generate" class="btn-primary" type="button">Generar equipos</button>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
