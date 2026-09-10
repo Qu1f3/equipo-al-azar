@@ -155,12 +155,13 @@ main {
 
 .add-player-form {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 10px;
 }
 
 .add-player-form input {
-  flex: 1;
+  flex: 1 1 140px;
   min-width: 0;
   background: var(--panel-2);
   border: 1px solid var(--line);
@@ -172,6 +173,18 @@ main {
 
 .add-player-form input::placeholder { color: var(--muted); }
 
+.add-player-form .position-select {
+  flex: 1 1 110px;
+  min-width: 0;
+  height: 44px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--chalk);
+  border-radius: var(--radius-control);
+  padding: 0 10px;
+  font-size: 14px;
+}
+
 .add-player-form button {
   background: var(--chalk);
   color: var(--bg);
@@ -181,6 +194,11 @@ main {
   height: 44px;
   font-weight: 700;
   cursor: pointer;
+  flex: 1 1 100%;
+}
+
+@media (min-width: 420px) {
+  .add-player-form button { flex: 0 0 auto; }
 }
 
 .player-list {
@@ -194,6 +212,7 @@ main {
 
 .player-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   background: var(--panel-2);
@@ -203,12 +222,47 @@ main {
 }
 
 .player-row .player-name {
-  flex: 1;
+  flex: 1 1 80px;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
+}
+
+.pos-badge {
+  flex: none;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--bg);
+  background: var(--slate);
+  border-radius: var(--radius-pill);
+  padding: 3px 8px;
+  min-width: 30px;
+  text-align: center;
+}
+
+.pos-badge.pos-colocador { background: var(--gold); }
+.pos-badge.pos-opuesto { background: var(--teal); }
+.pos-badge.pos-central { background: #C1487B; color: var(--chalk); }
+.pos-badge.pos-salida { background: #5B8DD9; color: var(--chalk); }
+.pos-badge.pos-libero { background: #8BC152; }
+.pos-badge.pos-none {
+  background: transparent;
+  border: 1px dashed var(--muted);
+  color: var(--muted);
+}
+
+.position-select {
+  background: var(--bg);
+  color: var(--chalk);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  height: 32px;
+  font-size: 13px;
+  flex: none;
+  padding: 0 4px;
 }
 
 .player-row input.player-name-edit {
@@ -301,6 +355,12 @@ main {
 
 .total-players {
   margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.formation-hint {
+  margin: 4px 0 0;
   font-size: 13px;
   color: var(--muted);
 }
@@ -409,6 +469,14 @@ main {
 }
 
 .team-player:last-child { border-bottom: none; }
+
+.team-player__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .tier-dot {
   width: 9px;

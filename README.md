@@ -53,9 +53,35 @@ Cualquiera de las dos sirve por `https://`, así que el service worker y el
 
 - Los bombos, la cantidad de equipos y el último sorteo se guardan solos en
   `localStorage`. "Limpiar todo" borra todo y pide confirmación antes.
-- El sorteo reparte cada tier de forma aleatoria y rotativa entre los
-  equipos; si un tier no alcanza para repartir igual, la app avisa qué
-  equipos quedarán con uno más en ese nivel.
 - Si actualizas los archivos después de haber instalado la app, el service
   worker usa un cache versionado (`CACHE_NAME` en `sw.js`) — sube ese número
   cuando publiques cambios para que los celulares bajen la versión nueva.
+
+## Posiciones
+
+Cada jugador tiene, además de su tier (nivel), una posición: **colocador**,
+**opuesto**, **central**, **salida** o **líbero** (opcional). Se elige al
+agregarlo, y se puede cambiar después con el selector de posición en su
+fila.
+
+El sorteo arma los equipos respetando esta formación por equipo:
+
+- 2 salidas
+- 2 centrales
+- 1 opuesto
+- 1 colocador
+- 1 líbero (opcional)
+
+Para eso, reparte a los jugadores **posición por posición** (no solo por
+nivel): dentro de cada posición, siempre asigna primero al equipo que menos
+tenga de esa posición hasta el momento, así no se agrupan, por ejemplo, dos
+colocadores en el mismo equipo salvo que sea matemáticamente inevitable
+(más colocadores anotados que equipos armados) — y en ese caso el
+excedente se reparte entre equipos distintos, no se apila en uno solo.
+Dentro de cada posición, además intercala los niveles (tiers) al repartir,
+para que el balance por nivel se mantenga razonable.
+
+Si a una posición no le alcanzan jugadores para cubrir la formación
+completa (o sobran), la app muestra un aviso explicando qué pasará. Los
+jugadores sin posición asignada se reparten aparte, solo por tamaño de
+equipo, y también generan un aviso para que los edites.

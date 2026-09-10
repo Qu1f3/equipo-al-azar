@@ -39,6 +39,15 @@
       <form class="add-player-form" data-tier="tier1">
         <label class="sr-only" for="input-tier1">Nombre del jugador para Tier 1</label>
         <input id="input-tier1" type="text" placeholder="Nombre del jugador" autocomplete="off" maxlength="40">
+        <label class="sr-only" for="add-position-tier1">Posición del jugador para Tier 1</label>
+        <select id="add-position-tier1" class="position-select" required>
+          <option value="" disabled selected>Posición</option>
+          <option value="colocador">Colocador</option>
+          <option value="opuesto">Opuesto</option>
+          <option value="central">Central</option>
+          <option value="salida">Salida</option>
+          <option value="libero">Líbero</option>
+        </select>
         <button type="submit">Agregar</button>
       </form>
       <ul class="player-list" id="list-tier1"></ul>
@@ -53,6 +62,15 @@
       <form class="add-player-form" data-tier="tier2">
         <label class="sr-only" for="input-tier2">Nombre del jugador para Tier 2</label>
         <input id="input-tier2" type="text" placeholder="Nombre del jugador" autocomplete="off" maxlength="40">
+        <label class="sr-only" for="add-position-tier2">Posición del jugador para Tier 2</label>
+        <select id="add-position-tier2" class="position-select" required>
+          <option value="" disabled selected>Posición</option>
+          <option value="colocador">Colocador</option>
+          <option value="opuesto">Opuesto</option>
+          <option value="central">Central</option>
+          <option value="salida">Salida</option>
+          <option value="libero">Líbero</option>
+        </select>
         <button type="submit">Agregar</button>
       </form>
       <ul class="player-list" id="list-tier2"></ul>
@@ -67,6 +85,15 @@
       <form class="add-player-form" data-tier="tier3">
         <label class="sr-only" for="input-tier3">Nombre del jugador para Tier 3</label>
         <input id="input-tier3" type="text" placeholder="Nombre del jugador" autocomplete="off" maxlength="40">
+        <label class="sr-only" for="add-position-tier3">Posición del jugador para Tier 3</label>
+        <select id="add-position-tier3" class="position-select" required>
+          <option value="" disabled selected>Posición</option>
+          <option value="colocador">Colocador</option>
+          <option value="opuesto">Opuesto</option>
+          <option value="central">Central</option>
+          <option value="salida">Salida</option>
+          <option value="libero">Líbero</option>
+        </select>
         <button type="submit">Agregar</button>
       </form>
       <ul class="player-list" id="list-tier3"></ul>
@@ -81,6 +108,7 @@
       <input id="input-num-teams" type="number" min="2" max="20" step="1" value="2" inputmode="numeric">
     </div>
     <p class="total-players">Total de jugadores en los bombos: <strong id="total-players">0</strong></p>
+    <p class="formation-hint">Formación por equipo: 2 salidas, 2 centrales, 1 opuesto, 1 colocador y 1 líbero (opcional).</p>
     <div id="warnings" class="warnings" role="status" aria-live="polite"></div>
   </section>
 

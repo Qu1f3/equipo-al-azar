@@ -1,7 +1,7 @@
 // Bombos Voley — service worker
 // Cache-first app shell so the app opens and works with no connection courtside.
 
-var CACHE_NAME = "bombos-voley-cache-v1";
+var CACHE_NAME = "bombos-voley-cache-v2";
 
 var APP_SHELL = [
   "./",

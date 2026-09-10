@@ -9,6 +9,17 @@
     { key: "tier3", label: "Tier 3" }
   ];
 
+  // Cada posición define cuántos jugadores de ese tipo necesita CADA equipo.
+  // "optional" quiere decir que un equipo puede quedarse sin nadie ahí (líbero)
+  // sin que se considere un problema.
+  var POSITIONS = [
+    { key: "colocador", label: "Colocador", short: "COL", perTeam: 1, optional: false },
+    { key: "opuesto", label: "Opuesto", short: "OPU", perTeam: 1, optional: false },
+    { key: "central", label: "Central", short: "CEN", perTeam: 2, optional: false },
+    { key: "salida", label: "Salida", short: "SAL", perTeam: 2, optional: false },
+    { key: "libero", label: "Líbero", short: "LIB", perTeam: 1, optional: true }
+  ];
+
   var TEAM_COLORS = [
     "#E5A335", "#3EA39C", "#C1487B", "#5B8DD9",
     "#8BC152", "#B07BC7", "#E2543A", "#7C8AA0"
@@ -24,17 +35,36 @@
     };
   }
 
+  // Normaliza un jugador guardado: acepta tanto el formato viejo (solo texto)
+  // como el nuevo ({name, position}), para no perder los bombos ya cargados.
+  function normalizePlayer(raw) {
+    if (typeof raw === "string") {
+      return { name: raw, position: null };
+    }
+    if (raw && typeof raw === "object" && typeof raw.name === "string") {
+      var pos = POSITIONS.some(function (p) { return p.key === raw.position; }) ? raw.position : null;
+      return { name: raw.name, position: pos };
+    }
+    return null;
+  }
+
   function loadState() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return defaultState();
       var parsed = JSON.parse(raw);
       var base = defaultState();
+
+      function normTier(arr) {
+        if (!Array.isArray(arr)) return [];
+        return arr.map(normalizePlayer).filter(Boolean);
+      }
+
       return {
         tiers: {
-          tier1: Array.isArray(parsed.tiers && parsed.tiers.tier1) ? parsed.tiers.tier1 : base.tiers.tier1,
-          tier2: Array.isArray(parsed.tiers && parsed.tiers.tier2) ? parsed.tiers.tier2 : base.tiers.tier2,
-          tier3: Array.isArray(parsed.tiers && parsed.tiers.tier3) ? parsed.tiers.tier3 : base.tiers.tier3
+          tier1: normTier(parsed.tiers && parsed.tiers.tier1),
+          tier2: normTier(parsed.tiers && parsed.tiers.tier2),
+          tier3: normTier(parsed.tiers && parsed.tiers.tier3)
         },
         numTeams: Number.isFinite(parsed.numTeams) ? parsed.numTeams : base.numTeams,
         lastResult: parsed.lastResult || null
@@ -60,6 +90,23 @@
     return key;
   }
 
+  function positionByKey(key) {
+    for (var i = 0; i < POSITIONS.length; i++) {
+      if (POSITIONS[i].key === key) return POSITIONS[i];
+    }
+    return null;
+  }
+
+  function positionLabel(key) {
+    var p = positionByKey(key);
+    return p ? p.label : "Sin posición";
+  }
+
+  function positionShort(key) {
+    var p = positionByKey(key);
+    return p ? p.short : "?";
+  }
+
   function shuffle(arr) {
     var a = arr.slice();
     for (var i = a.length - 1; i > 0; i--) {
@@ -71,10 +118,11 @@
 
   // ---------- player CRUD ----------
 
-  function addPlayer(tierKey, name) {
+  function addPlayer(tierKey, name, position) {
     var trimmed = name.trim();
     if (!trimmed) return;
-    state.tiers[tierKey].push(trimmed);
+    var pos = POSITIONS.some(function (p) { return p.key === position; }) ? position : null;
+    state.tiers[tierKey].push({ name: trimmed, position: pos });
     saveState();
     render();
   }
@@ -88,16 +136,23 @@
   function renamePlayer(tierKey, index, newName) {
     var trimmed = newName.trim();
     if (!trimmed) { render(); return; }
-    state.tiers[tierKey][index] = trimmed;
+    state.tiers[tierKey][index].name = trimmed;
+    saveState();
+    render();
+  }
+
+  function changePlayerPosition(tierKey, index, position) {
+    var pos = POSITIONS.some(function (p) { return p.key === position; }) ? position : null;
+    state.tiers[tierKey][index].position = pos;
     saveState();
     render();
   }
 
   function movePlayer(fromTierKey, index, toTierKey) {
     if (fromTierKey === toTierKey) return;
-    var name = state.tiers[fromTierKey][index];
+    var player = state.tiers[fromTierKey][index];
     state.tiers[fromTierKey].splice(index, 1);
-    state.tiers[toTierKey].push(name);
+    state.tiers[toTierKey].push(player);
     saveState();
     render();
   }
@@ -113,6 +168,65 @@
     showToast("Todo limpio. Listo para empezar de nuevo.");
   }
 
+  // ---------- helpers sobre todos los jugadores ----------
+
+  function allPlayers() {
+    var list = [];
+    TIERS.forEach(function (tier) {
+      state.tiers[tier.key].forEach(function (player) {
+        list.push({ name: player.name, tierKey: tier.key, position: player.position });
+      });
+    });
+    return list;
+  }
+
+  function playersByPosition(posKey) {
+    return allPlayers().filter(function (p) { return p.position === posKey; });
+  }
+
+  function playersWithoutPosition() {
+    return allPlayers().filter(function (p) { return !p.position; });
+  }
+
+  // Calcula, para "n" equipos, si cada posición alcanza para cumplir la
+  // formación (perTeam por equipo). Es puramente aritmético (no depende del
+  // sorteo), así que sirve tanto para la vista previa como para el resultado.
+  function computePositionWarnings(n) {
+    var warnings = [];
+    POSITIONS.forEach(function (pos) {
+      var count = playersByPosition(pos.key).length;
+      var target = pos.perTeam * n;
+      if (count === 0) {
+        if (!pos.optional) {
+          warnings.push("No hay nadie anotado como " + pos.label.toLowerCase() + ": ningún equipo tendrá " + pos.label.toLowerCase() + ".");
+        }
+        return;
+      }
+      if (count < target) {
+        var short = target - count;
+        warnings.push(
+          pos.label + ": hay " + count + " para " + n + " equipos (se necesitan " + pos.perTeam + " por equipo) — " +
+          short + (short === 1 ? " equipo quedará" : " equipos quedarán") + " con menos " + pos.label.toLowerCase() + " de lo ideal."
+        );
+      } else if (count > target) {
+        var extra = count - target;
+        warnings.push(
+          pos.label + ": hay " + count + " para " + n + " equipos (se necesitan " + pos.perTeam + " por equipo) — " +
+          extra + (extra === 1 ? " equipo tendrá" : " equipos tendrán") + " uno de más en esa posición."
+        );
+      }
+    });
+    var sinPosicion = playersWithoutPosition().length;
+    if (sinPosicion > 0) {
+      warnings.push(
+        sinPosicion + (sinPosicion === 1 ? " jugador no tiene" : " jugadores no tienen") +
+        " posición asignada y " + (sinPosicion === 1 ? "se repartirá" : "se repartirán") +
+        " aparte, sin respetar la formación. Edítalo(s) para asignarle(s) una posición."
+      );
+    }
+    return warnings;
+  }
+
   // ---------- team draw algorithm ----------
 
   function distributeTeams(numTeams) {
@@ -120,52 +234,78 @@
     var teams = [];
     for (var t = 0; t < n; t++) teams.push({ id: t + 1, players: [] });
 
-    var warnings = [];
     var currentTotals = teams.map(function () { return 0; });
+    var warnings = computePositionWarnings(n);
 
-    TIERS.forEach(function (tier) {
-      var pool = state.tiers[tier.key];
+    // 1) Reparte posición por posición (colocador y opuesto primero, porque
+    // solo hace falta 1 por equipo y son los que más "chocan" si se agrupan).
+    POSITIONS.forEach(function (pos) {
+      var pool = playersByPosition(pos.key);
       if (!pool.length) return;
 
-      var shuffledPlayers = shuffle(pool);
+      // Agrupa por tier y baraja cada grupo, para intercalar niveles al
+      // armar el orden de reparto (así el reparto por posición no rompe
+      // del todo el balance por nivel).
+      var byTier = {};
+      TIERS.forEach(function (tr) { byTier[tr.key] = []; });
+      pool.forEach(function (p) { byTier[p.tierKey].push(p); });
+      TIERS.forEach(function (tr) { byTier[tr.key] = shuffle(byTier[tr.key]); });
 
-      // Rotate through every team once per full cycle (keeps the tier mix
-      // proportional), but when a tier doesn't divide evenly, hand the
-      // leftover seats to whichever teams are currently smallest overall —
-      // shuffled first so ties between equally-sized teams stay random —
-      // so a run of unlucky remainders doesn't stack onto the same team.
-      var teamOrder = shuffle(teams.map(function (_, i) { return i; }));
-      teamOrder.sort(function (a, b) { return currentTotals[a] - currentTotals[b]; });
+      var maxLen = 0;
+      TIERS.forEach(function (tr) { maxLen = Math.max(maxLen, byTier[tr.key].length); });
 
-      shuffledPlayers.forEach(function (name, idx) {
-        var teamIndex = teamOrder[idx % n];
-        teams[teamIndex].players.push({ name: name, tierKey: tier.key });
+      var orderedPool = [];
+      for (var i = 0; i < maxLen; i++) {
+        TIERS.forEach(function (tr) {
+          if (byTier[tr.key][i]) orderedPool.push(byTier[tr.key][i]);
+        });
+      }
+
+      var positionCounts = teams.map(function () { return 0; });
+
+      orderedPool.forEach(function (player) {
+        // Siempre elige el equipo que menos tiene de ESTA posición todavía;
+        // si hay empate, el que tenga menos jugadores en total; si sigue
+        // empatado, al azar. Esto evita apilar 2 colocadores en el mismo
+        // equipo salvo que sea matemáticamente inevitable (y en ese caso
+        // reparte el excedente lo más parejo posible entre equipos distintos).
+        var order = shuffle(teams.map(function (_, idx) { return idx; }));
+        order.sort(function (a, b) {
+          if (positionCounts[a] !== positionCounts[b]) return positionCounts[a] - positionCounts[b];
+          return currentTotals[a] - currentTotals[b];
+        });
+        var teamIndex = order[0];
+        teams[teamIndex].players.push({ name: player.name, tierKey: player.tierKey, position: pos.key });
+        positionCounts[teamIndex]++;
         currentTotals[teamIndex]++;
       });
-
-      var extra = pool.length % n;
-      if (extra !== 0) {
-        warnings.push(
-          tierLabel(tier.key) + " no alcanza para repartir igual entre los " + n +
-          " equipos: " + extra + (extra === 1 ? " equipo tendrá" : " equipos tendrán") +
-          " uno más que los demás en ese nivel."
-        );
-      }
     });
 
-    var totalPlayers = TIERS.reduce(function (sum, t) { return sum + state.tiers[t.key].length; }, 0);
+    // 2) Jugadores sin posición asignada: se reparten aparte, balanceando
+    // solo por tamaño total de equipo (como antes), para no perderlos.
+    var sinPosicion = shuffle(playersWithoutPosition());
+    sinPosicion.forEach(function (player) {
+      var order = shuffle(teams.map(function (_, idx) { return idx; }));
+      order.sort(function (a, b) { return currentTotals[a] - currentTotals[b]; });
+      var teamIndex = order[0];
+      teams[teamIndex].players.push({ name: player.name, tierKey: player.tierKey, position: null });
+      currentTotals[teamIndex]++;
+    });
+
+    var totalPlayers = allPlayers().length;
     if (totalPlayers > 0 && totalPlayers < n) {
       warnings.push("Hay más equipos (" + n + ") que jugadores (" + totalPlayers + "): algunos equipos quedarán vacíos.");
     }
 
-    // shuffle player order within each team so a tier doesn't always list first
+    // baraja el orden dentro de cada equipo solo para que la lista no salga
+    // siempre agrupada por posición
     teams.forEach(function (team) { team.players = shuffle(team.players); });
 
     return { teams: teams, warnings: warnings };
   }
 
   function generateTeams() {
-    var totalPlayers = TIERS.reduce(function (sum, t) { return sum + state.tiers[t.key].length; }, 0);
+    var totalPlayers = allPlayers().length;
     if (totalPlayers === 0) {
       showToast("Agrega jugadores a los bombos antes de generar equipos.");
       return;
@@ -191,7 +331,10 @@
     var lines = [];
     state.lastResult.teams.forEach(function (team) {
       lines.push("Equipo " + team.id + ":");
-      team.players.forEach(function (p) { lines.push("- " + p.name); });
+      team.players.forEach(function (p) {
+        var tag = p.position ? positionLabel(p.position) : "sin posición";
+        lines.push("- " + p.name + " (" + tag + ")");
+      });
       lines.push("");
     });
     var text = lines.join("\n").trim();
@@ -226,6 +369,33 @@
     renderWarningsPreview();
   }
 
+  function buildPositionSelect(player, tierKey, index) {
+    var select = document.createElement("select");
+    select.className = "position-select";
+    select.setAttribute("aria-label", "Posición de " + player.name);
+
+    var placeholderOpt = document.createElement("option");
+    placeholderOpt.textContent = "Posición";
+    placeholderOpt.value = "";
+    placeholderOpt.disabled = true;
+    if (!player.position) placeholderOpt.selected = true;
+    select.appendChild(placeholderOpt);
+
+    POSITIONS.forEach(function (pos) {
+      var opt = document.createElement("option");
+      opt.value = pos.key;
+      opt.textContent = pos.label;
+      if (player.position === pos.key) opt.selected = true;
+      select.appendChild(opt);
+    });
+
+    select.addEventListener("change", function () {
+      changePlayerPosition(tierKey, index, select.value);
+    });
+
+    return select;
+  }
+
   function renderTier(tierKey) {
     var list = document.getElementById("list-" + tierKey);
     var countEl = document.getElementById("count-" + tierKey);
@@ -234,28 +404,36 @@
     countEl.textContent = String(players.length);
     list.innerHTML = "";
 
-    players.forEach(function (name, index) {
+    players.forEach(function (player, index) {
       var li = document.createElement("li");
       li.className = "player-row";
 
       var nameSpan = document.createElement("span");
       nameSpan.className = "player-name";
-      nameSpan.textContent = name;
+      nameSpan.textContent = player.name;
       li.appendChild(nameSpan);
+
+      var posBadge = document.createElement("span");
+      posBadge.className = "pos-badge" + (player.position ? " pos-" + player.position : " pos-none");
+      posBadge.textContent = player.position ? positionShort(player.position) : "?";
+      posBadge.title = player.position ? positionLabel(player.position) : "Sin posición asignada";
+      li.appendChild(posBadge);
 
       var editBtn = document.createElement("button");
       editBtn.type = "button";
       editBtn.className = "icon-btn";
-      editBtn.setAttribute("aria-label", "Editar nombre de " + name);
+      editBtn.setAttribute("aria-label", "Editar nombre de " + player.name);
       editBtn.textContent = "✎";
       editBtn.addEventListener("click", function () {
         startEdit(li, nameSpan, tierKey, index);
       });
       li.appendChild(editBtn);
 
+      li.appendChild(buildPositionSelect(player, tierKey, index));
+
       var moveSelect = document.createElement("select");
       moveSelect.className = "move-select";
-      moveSelect.setAttribute("aria-label", "Mover a otro tier a " + name);
+      moveSelect.setAttribute("aria-label", "Mover a otro tier a " + player.name);
       var placeholderOpt = document.createElement("option");
       placeholderOpt.textContent = "Mover";
       placeholderOpt.value = "";
@@ -278,7 +456,7 @@
       var delBtn = document.createElement("button");
       delBtn.type = "button";
       delBtn.className = "icon-btn";
-      delBtn.setAttribute("aria-label", "Eliminar a " + name);
+      delBtn.setAttribute("aria-label", "Eliminar a " + player.name);
       delBtn.textContent = "🗑";
       delBtn.addEventListener("click", function () { removePlayer(tierKey, index); });
       li.appendChild(delBtn);
@@ -307,35 +485,23 @@
   }
 
   function renderTotals() {
-    var total = TIERS.reduce(function (sum, t) { return sum + state.tiers[t.key].length; }, 0);
+    var total = allPlayers().length;
     document.getElementById("total-players").textContent = String(total);
   }
 
   function renderWarningsPreview() {
-    // live preview of tier-imbalance warnings as the coach types the team count,
-    // so they see it before hitting "Generar equipos"
+    // vista previa en vivo de los avisos de formación, mientras el
+    // entrenador escribe la cantidad de equipos, antes de generar
     var numTeamsInput = document.getElementById("input-num-teams");
     var n = parseInt(numTeamsInput.value, 10);
     var container = document.getElementById("warnings");
     container.innerHTML = "";
     if (!Number.isFinite(n) || n < 2) return;
 
-    var total = TIERS.reduce(function (sum, t) { return sum + state.tiers[t.key].length; }, 0);
+    var total = allPlayers().length;
     if (total === 0) return;
 
-    var msgs = [];
-    TIERS.forEach(function (tier) {
-      var len = state.tiers[tier.key].length;
-      if (len === 0) return;
-      var extra = len % n;
-      if (extra !== 0) {
-        msgs.push(
-          tierLabel(tier.key) + " no alcanza para repartir igual entre los " + n +
-          " equipos: " + extra + (extra === 1 ? " equipo tendrá" : " equipos tendrán") +
-          " uno más que los demás en ese nivel."
-        );
-      }
-    });
+    var msgs = computePositionWarnings(n);
     if (total < n) {
       msgs.push("Hay más equipos (" + n + ") que jugadores (" + total + "): algunos equipos quedarán vacíos.");
     }
@@ -357,7 +523,8 @@
     section.hidden = false;
     grid.innerHTML = "";
 
-    // re-show any warnings inside the results area too (they matched what was used at generation time)
+    // vuelve a mostrar los avisos también en la zona de resultados
+    // (corresponden a lo que se usó al momento de generar)
     var container = document.getElementById("warnings");
     container.innerHTML = "";
     result.warnings.forEach(function (m) {
@@ -403,8 +570,14 @@
         dot.className = "tier-dot " + p.tierKey;
         row.appendChild(dot);
         var name = document.createElement("span");
+        name.className = "team-player__name";
         name.textContent = p.name;
         row.appendChild(name);
+        var posBadge = document.createElement("span");
+        posBadge.className = "pos-badge" + (p.position ? " pos-" + p.position : " pos-none");
+        posBadge.textContent = p.position ? positionShort(p.position) : "?";
+        posBadge.title = p.position ? positionLabel(p.position) : "Sin posición asignada";
+        row.appendChild(posBadge);
         body.appendChild(row);
       });
       card.appendChild(body);
@@ -421,8 +594,10 @@
       form.addEventListener("submit", function (e) {
         e.preventDefault();
         var input = document.getElementById("input-" + tier.key);
-        addPlayer(tier.key, input.value);
+        var positionSelect = document.getElementById("add-position-" + tier.key);
+        addPlayer(tier.key, input.value, positionSelect.value);
         input.value = "";
+        positionSelect.value = "";
         input.focus();
       });
     });
